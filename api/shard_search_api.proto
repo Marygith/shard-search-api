@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package shardsearch;
+
+option java_package = "ru.nms.diplom.shardsearch";
+option java_multiple_files = true;
+
+// Request for shard-level search
+message ShardSearchRequest {
+  string query = 1;
+  int32 k = 2;
+  int32 indexType = 3;           // 0 = FAISS, 1 = Lucene, or enum if preferred
+  repeated int32 shard_ids = 4;  // List of shard IDs on this node to search
+}
+
+// Single document result from a shard
+message Document {
+  int32 id = 1;
+  float luceneScore = 2;
+  float faissScore = 3;
+}
+
+// Response containing documents from shard
+message ShardSearchResponse {
+  repeated Document results = 1;
+}
+
+message SimilarityScoresRequest {
+    repeated Document documents = 1;
+    int32 shardId = 2;
+    int32 indexType = 3;
+    string query = 4;
+}
+
+// gRPC service for shard-level search
+service ShardSearchService {
+  rpc shardSearch (ShardSearchRequest) returns (ShardSearchResponse);
+  rpc getSimilarityScores (SimilarityScoresRequest) returns (ShardSearchResponse);
+}

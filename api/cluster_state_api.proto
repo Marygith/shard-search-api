@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+option java_package = "ru.nms.diplom.clusterstate.service";
+option java_multiple_files = true;
+import "google/protobuf/empty.proto";
+service ShardService {
+  rpc getShardsDistribution(google.protobuf.Empty) returns (ShardsDistributionResponse);
+  rpc getIpsForIds(IpsForIdsRequest) returns (IpsForIdsResponse);
+  rpc getShardIp(ShardIpRequest) returns (ShardIpResponse);
+}
+
+message ShardMapping {
+  string ip = 1;
+  repeated int32 shards = 2;
+}
+
+message ShardsDistributionResponse {
+  repeated ShardMapping faissShards = 1;
+  repeated ShardMapping luceneShards = 2;
+}
+
+message IpsForIdsRequest {
+  repeated int32 ids = 1;
+  int32 type = 2; // 0 = faiss, 1 = lucene
+}
+
+message IdsOnIp {
+  string ip = 1;
+  repeated int32 ids = 2;
+}
+
+message IpsForIdsResponse {
+  repeated IdsOnIp mappings = 1;
+}
+
+message ShardIpRequest {
+    int32 shardId = 1;
+    int32 indexType = 2;
+}
+
+message ShardIpResponse {
+    string ip = 1;
+}

@@ -5,13 +5,14 @@ option java_multiple_files = true;
 import "google/protobuf/empty.proto";
 service ShardService {
   rpc getShardsDistribution(google.protobuf.Empty) returns (ShardsDistributionResponse);
-  rpc getIpsForIds(IpsForIdsRequest) returns (IpsForIdsResponse);
-  rpc getShardIp(ShardIpRequest) returns (ShardIpResponse);
+  rpc getShardAddress(ShardAddressRequest) returns (ShardAddressResponse);
+  rpc GetShardsForNode(NodeRequest) returns (ShardConfigList);
 }
 
 message ShardMapping {
-  string ip = 1;
-  repeated int32 shards = 2;
+  string host = 1;
+  int32 port = 2;
+  repeated int32 shards = 3;
 }
 
 message ShardsDistributionResponse {
@@ -19,25 +20,29 @@ message ShardsDistributionResponse {
   repeated ShardMapping luceneShards = 2;
 }
 
-message IpsForIdsRequest {
-  repeated int32 ids = 1;
-  int32 type = 2; // 0 = faiss, 1 = lucene
+message ShardAddressRequest {
+  int32 shardId = 1;
+  int32 indexType = 2;
 }
 
-message IdsOnIp {
-  string ip = 1;
-  repeated int32 ids = 2;
+message ShardAddressResponse {
+  string host = 1;
+  int32 port = 2;
+
 }
 
-message IpsForIdsResponse {
-  repeated IdsOnIp mappings = 1;
+message NodeRequest {
+  string node_id = 1;
 }
 
-message ShardIpRequest {
-    int32 shardId = 1;
-    int32 indexType = 2;
+message ShardConfigList {
+  repeated ShardConfig shards = 1;
 }
 
-message ShardIpResponse {
-    string ip = 1;
+message ShardConfig {
+  int32 id = 1;
+  string type = 2;
+  string lucene_index_path = 3;
+  string passages_csv_path = 4;
+  string embeddings_csv_path = 5;
 }

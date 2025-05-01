@@ -34,6 +34,6 @@ message SimilarityScoresRequest {
 
 // gRPC service for shard-level search
 service ShardSearchService {
-  rpc shardSearch (ShardSearchRequest) returns (ShardSearchResponse);
+  rpc shardSearch (ShardSearchRequest) returns (stream ShardSearchResponse);
   rpc getSimilarityScores (SimilarityScoresRequest) returns (ShardSearchResponse);
 }

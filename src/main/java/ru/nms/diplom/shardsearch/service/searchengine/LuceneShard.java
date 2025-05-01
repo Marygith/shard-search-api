@@ -31,6 +31,9 @@ public class LuceneShard implements SearchEngine {
 
     @Override
     public List<Document.Builder> searchDocs(String query, int k) {
+
+        System.out.println("Searching docs in lucene shard " + shardId);
+
         try {
             Query q = parser.parse(QueryParser.escape(query));
             TopDocs topDocs = searcher.search(q, k);
@@ -40,6 +43,8 @@ public class LuceneShard implements SearchEngine {
                 var id = Integer.parseInt(doc.get("id"));
                 result.add(Document.newBuilder().setId(id).setFaissScore(0f).setLuceneScore(scoreDoc.score));
             }
+            System.out.printf("Got docs from lucene shard %s with ids: %s%n", shardId, result.stream().map(Document.Builder::getId).toList());
+
             return result;
         } catch (Exception e) {
             throw new CompletionException("Failed to find docs in lucene shard %s".formatted(shardId), e);
@@ -48,6 +53,10 @@ public class LuceneShard implements SearchEngine {
 
     @Override
     public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
+        if (docs.isEmpty()) {
+            return List.of();
+        }
+        System.out.printf("Searching similarity scores in lucene shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
         try {
             Query q = parser.parse(QueryParser.escape(query));
             BooleanQuery.Builder idFilterBuilder = new BooleanQuery.Builder();
@@ -67,6 +76,8 @@ public class LuceneShard implements SearchEngine {
             for (var scoreDoc : topDocs.scoreDocs) {
                 idToScore.put(Integer.parseInt(searcher.doc(scoreDoc.doc).get("id")), scoreDoc.score);
             }
+            System.out.printf("Got similarity scores from lucene shard %s with ids: %s%n", shardId, idToScore.keySet());
+
             return docs.stream().map(d -> d.setLuceneScore(idToScore.get(d.getId())).build()).toList();
         } catch (Exception e) {
             throw new CompletionException("Failed to get similarity scores in lucene shard %s".formatted(shardId), e);

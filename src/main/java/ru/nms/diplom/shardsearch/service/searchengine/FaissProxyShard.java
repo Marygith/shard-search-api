@@ -22,6 +22,10 @@ public class FaissProxyShard implements SearchEngine{
 
     @Override
     public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
+        if (docs.isEmpty()) {
+            return List.of();
+        }
+        System.out.printf("Searching similarity scores in faiss proxy shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
         var scoresRequestBuilder = SimilarityScoresRequest.newBuilder();
         docs.forEach(d -> scoresRequestBuilder.addDocuments(d.build()));
         return stub.getSimilarityScores(

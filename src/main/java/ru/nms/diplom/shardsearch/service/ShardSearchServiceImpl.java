@@ -2,18 +2,19 @@ package ru.nms.diplom.shardsearch.service;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import ru.nms.diplom.clusterstate.service.NodeRequest;
 import ru.nms.diplom.clusterstate.service.ShardConfig;
 import ru.nms.diplom.clusterstate.service.ShardConfigList;
 import ru.nms.diplom.faiss.FaissSearchServiceGrpc;
 import ru.nms.diplom.shardsearch.*;
-import ru.nms.diplom.shardsearch.config.ShardFileConfig;
+import ru.nms.diplom.shardsearch.factory.LuceneShardFactory;
+import ru.nms.diplom.shardsearch.factory.ProxyShardBuilder;
 import ru.nms.diplom.shardsearch.model.IndexType;
 import ru.nms.diplom.shardsearch.service.scoreenricher.PassageReader;
-import ru.nms.diplom.shardsearch.service.searchengine.*;
+import ru.nms.diplom.shardsearch.service.engine.*;
+import ru.nms.diplom.shardsearch.shard.FaissShard;
+import ru.nms.diplom.shardsearch.shard.LuceneShard;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -54,7 +55,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 .build();
 
         ShardConfigList shardConfigList = clusterStateStub.getShardsForNode(request);
-        System.out.println("loaded config: " + shardConfigList);
+//        System.out.println("loaded config: " + shardConfigList);
         List<ShardConfig> assignedShards = shardConfigList.getShardsList();
 
         for (var entry : assignedShards) {
@@ -68,7 +69,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 if (type.equals("lucene") || type.equals("both")) {
                     LuceneShard luceneShard = luceneShardFactory.initializeShard(shardId, luceneIndexPath, passageCsvFile);
                     luceneShards.put(shardId, luceneShard);
-                    System.out.printf("Initialized Lucene shard %d%n", shardId);
+//                    System.out.printf("Initialized Lucene shard %d%n", shardId);
                 }
 
                 if (type.equals("faiss") || type.equals("both")) {
@@ -76,7 +77,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                     PassageReader passageReader = new PassageReader(embeddingsCsvFile.toString(), 384);
                     FaissShard faissShard = new FaissShard(stub, passageReader, shardId);
                     faissShards.put(shardId, faissShard);
-                    System.out.printf("Initialized FAISS shard %d%n", shardId);
+//                    System.out.printf("Initialized FAISS shard %d%n", shardId);
                 }
 
             } catch (IOException e) {
@@ -117,7 +118,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
 
     @Override
     public void getSimilarityScores(SimilarityScoresRequest request, StreamObserver<ShardSearchResponse> responseObserver) {
-        System.out.println("came similarity scores request " + request);
+//        System.out.println("came similarity scores request " + request);
 
         IndexType indexType = IndexType.fromNumber(request.getIndexType());
         var similarityDocsEngine = switch (indexType) {

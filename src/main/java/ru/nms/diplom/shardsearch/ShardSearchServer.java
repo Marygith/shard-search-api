@@ -4,6 +4,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.protobuf.services.ProtoReflectionService;
 import ru.nms.diplom.shardsearch.module.ShardSearchServiceModule;
 import ru.nms.diplom.shardsearch.service.ShardSearchServiceImpl;
 
@@ -15,13 +16,15 @@ public class ShardSearchServer {
         // Get your service implementation
         ShardSearchServiceImpl shardSearchService = injector.getInstance(ShardSearchServiceImpl.class);
 
+        var port = Integer.parseInt(System.getenv("PORT"));
         // Start gRPC Server
-        Server server = ServerBuilder.forPort(9090)
+        Server server = ServerBuilder.forPort(port)
                 .addService(shardSearchService)
+                .addService(ProtoReflectionService.newInstance())
                 .build()
                 .start();
 
-        System.out.println("Shard Search Service started on port 9090");
+        System.out.println("Shard Search Service started on port " + port);
 
         server.awaitTermination(); // Block until server is terminated
     }

@@ -1,16 +1,17 @@
-package ru.nms.diplom.shardsearch.service.searchengine;
+package ru.nms.diplom.shardsearch.shard;
 
 import ru.nms.diplom.shardsearch.Document;
 import ru.nms.diplom.shardsearch.ShardSearchServiceGrpc;
 import ru.nms.diplom.shardsearch.SimilarityScoresRequest;
 import ru.nms.diplom.shardsearch.model.IndexType;
+import ru.nms.diplom.shardsearch.service.engine.SearchEngine;
 
 import java.util.List;
 
-public class FaissProxyShard implements SearchEngine{
+public class LuceneProxyShard implements SearchEngine {
     private final ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub;
     private final int shardId;
-    public FaissProxyShard(ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub, int shardId) {
+    public LuceneProxyShard(ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub, int shardId) {
         this.stub = stub;
         this.shardId = shardId;
     }
@@ -23,16 +24,19 @@ public class FaissProxyShard implements SearchEngine{
     @Override
     public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
         if (docs.isEmpty()) {
+            System.out.println("lucene proxy similarity stage was initiated for empty docs, strange");
+
             return List.of();
         }
-        System.out.printf("Searching similarity scores in faiss proxy shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
+//        System.out.printf("Searching similarity scores in lucene proxy shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
+
         var scoresRequestBuilder = SimilarityScoresRequest.newBuilder();
         docs.forEach(d -> scoresRequestBuilder.addDocuments(d.build()));
         return stub.getSimilarityScores(
-                scoresRequestBuilder
-                        .setShardId(shardId)
-                        .setIndexType(IndexType.VECTOR.getNumber())
-                        .build())
+                        scoresRequestBuilder
+                                .setShardId(shardId)
+                                .setIndexType(IndexType.LUCENE.getNumber())
+                                .build())
                 .getResultsList();
     }
 }

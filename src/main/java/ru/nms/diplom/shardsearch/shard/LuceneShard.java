@@ -1,19 +1,21 @@
-package ru.nms.diplom.shardsearch.service.searchengine;
+package ru.nms.diplom.shardsearch.shard;
 
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.FSDirectory;
 import ru.nms.diplom.shardsearch.Document;
+import ru.nms.diplom.shardsearch.service.engine.SearchEngine;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletionException;
 
@@ -32,7 +34,7 @@ public class LuceneShard implements SearchEngine {
     @Override
     public List<Document.Builder> searchDocs(String query, int k) {
 
-        System.out.println("Searching docs in lucene shard " + shardId);
+//        System.out.println("Searching docs in lucene shard " + shardId);
 
         try {
             Query q = parser.parse(QueryParser.escape(query));
@@ -43,7 +45,7 @@ public class LuceneShard implements SearchEngine {
                 var id = Integer.parseInt(doc.get("id"));
                 result.add(Document.newBuilder().setId(id).setFaissScore(0f).setLuceneScore(scoreDoc.score));
             }
-            System.out.printf("Got docs from lucene shard %s with ids: %s%n", shardId, result.stream().map(Document.Builder::getId).toList());
+//            System.out.printf("Got docs from lucene shard %s with ids: %s%n", shardId, result.stream().map(Document.Builder::getId).toList());
 
             return result;
         } catch (Exception e) {
@@ -54,18 +56,17 @@ public class LuceneShard implements SearchEngine {
     @Override
     public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
         if (docs.isEmpty()) {
+            System.out.println("lucene similarity stage was initiated for empty docs, strange");
             return List.of();
         }
-        System.out.printf("Searching similarity scores in lucene shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
+//        System.out.printf("Searching similarity scores in lucene shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
         try {
             Query q = parser.parse(QueryParser.escape(query));
-            BooleanQuery.Builder idFilterBuilder = new BooleanQuery.Builder();
+            IntSet idSet = new IntOpenHashSet(docs.size());
             for (var doc : docs) {
-                TermQuery idQuery = new TermQuery(new Term("id", String.valueOf(doc.getId())));
-                idFilterBuilder.add(idQuery, BooleanClause.Occur.SHOULD); // Match any of the ids
+                idSet.add(doc.getId());
             }
-
-            BooleanQuery idFilter = idFilterBuilder.build();
+            Query idFilter = IntPoint.newSetQuery("id", idSet.toIntArray());
             BooleanQuery combinedQuery = new BooleanQuery.Builder()
                     .add(q, BooleanClause.Occur.MUST)
                     .add(idFilter, BooleanClause.Occur.FILTER)
@@ -76,7 +77,7 @@ public class LuceneShard implements SearchEngine {
             for (var scoreDoc : topDocs.scoreDocs) {
                 idToScore.put(Integer.parseInt(searcher.doc(scoreDoc.doc).get("id")), scoreDoc.score);
             }
-            System.out.printf("Got similarity scores from lucene shard %s with ids: %s%n", shardId, idToScore.keySet());
+//            System.out.printf("Got similarity scores from lucene shard %s with ids: %s%n", shardId, idToScore.keySet());
 
             return docs.stream().map(d -> d.setLuceneScore(idToScore.get(d.getId())).build()).toList();
         } catch (Exception e) {

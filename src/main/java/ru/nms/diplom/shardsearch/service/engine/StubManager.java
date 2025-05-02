@@ -1,4 +1,4 @@
-package ru.nms.diplom.shardsearch.service.searchengine;
+package ru.nms.diplom.shardsearch.service.engine;
 
 import com.google.inject.Singleton;
 import io.grpc.ManagedChannel;
@@ -20,8 +20,9 @@ public class StubManager {
         return stubPool.computeIfAbsent(host + port, address -> {
             ManagedChannel channel = ManagedChannelBuilder.forAddress(host, port)
                     .usePlaintext()
+                    .maxInboundMessageSize(10000000)
                     .build();
-            return ShardSearchServiceGrpc.newBlockingStub(channel); // base stub
+            return ShardSearchServiceGrpc.newBlockingStub(channel);
         });
     }
 
@@ -31,8 +32,9 @@ public class StubManager {
             String target = "localhost";
             ManagedChannel channel = ManagedChannelBuilder.forAddress(target, port)
                     .usePlaintext()
+                    .maxInboundMessageSize(10000000)
                     .build();
-            return FaissSearchServiceGrpc.newBlockingStub(channel); // faiss stub
+            return FaissSearchServiceGrpc.newBlockingStub(channel);
         });
     }
 

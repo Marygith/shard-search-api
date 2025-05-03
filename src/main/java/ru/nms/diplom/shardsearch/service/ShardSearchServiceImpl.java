@@ -55,7 +55,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 .build();
 
         ShardConfigList shardConfigList = clusterStateStub.getShardsForNode(request);
-//        System.out.println("loaded config: " + shardConfigList);
+        System.out.println("\nloaded config: " + shardConfigList);
         List<ShardConfig> assignedShards = shardConfigList.getShardsList();
 
         for (var entry : assignedShards) {
@@ -89,7 +89,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
 
     @Override
     public void shardSearch(ShardSearchRequest request, StreamObserver<ShardSearchResponse> responseObserver) {
-        System.out.println("came shard search request " + request);
+//        System.out.println("came shard search request " + request);
         List<Integer> shardIds = request.getShardIdsList();
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
@@ -118,13 +118,14 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
 
     @Override
     public void getSimilarityScores(SimilarityScoresRequest request, StreamObserver<ShardSearchResponse> responseObserver) {
-//        System.out.println("came similarity scores request " + request);
 
         IndexType indexType = IndexType.fromNumber(request.getIndexType());
         var similarityDocsEngine = switch (indexType) {
             case VECTOR -> faissShards.computeIfAbsent(request.getShardId(), proxyShardBuilder::buildFaissProxyShard);
             case LUCENE -> luceneShards.computeIfAbsent(request.getShardId(), proxyShardBuilder::buildLuceneProxyShard);
         };
+//        System.out.println("came similarity scores request for type %s from another shard".formatted(indexType.name()) + request);
+
         var docs = similarityDocsEngine.enrichWithSimilarityScores(request.getDocumentsList().stream().map(Document::toBuilder).toList(), request.getQuery());
         responseObserver.onNext(ShardSearchResponse.newBuilder().addAllResults(docs).build());
         responseObserver.onCompleted();

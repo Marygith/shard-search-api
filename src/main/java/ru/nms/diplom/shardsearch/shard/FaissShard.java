@@ -30,6 +30,8 @@ public class FaissShard implements SearchEngine {
             results.add(Document.newBuilder().setId(faissResult.getId()).setFaissScore(faissResult.getScore()).setLuceneScore(0f));
         }
 //        System.out.printf("Got docs from faiss shard %s with ids: %s%n", shardId, results.stream().map(Document.Builder::getId).toList());
+//        System.out.printf("Got %s docs from faiss shard %s%n", response.getResultsList().size(), shardId);
+
         return results;
     }
 
@@ -46,7 +48,7 @@ public class FaissShard implements SearchEngine {
         var requestBuilder = SimilarityRequest.newBuilder().setQuery(query);
         docs.forEach(doc -> requestBuilder.putIdToVector(doc.getId(), Vector.newBuilder().addAllValues(passageReader.getVectorById(doc.getId())).build()));
         var scoresMap = stub.getSimilarityScores(requestBuilder.build()).getScoresMap();
-//        System.out.printf("Got similarity scores from faiss shard %s with ids: %s%n", shardId, scoresMap.keySet());
+//        System.out.printf("Got %s similarity scores from faiss shard %s%n", scoresMap.size(), shardId);
 
         return docs.stream().map(d -> d.setFaissScore(scoresMap.get(d.getId())).build()).toList();
     }

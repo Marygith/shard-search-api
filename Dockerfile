@@ -15,8 +15,19 @@ RUN pip install faiss-cpu
 RUN pip install numpy
 WORKDIR /app
 
+COPY target/shard-search-api-1.0-SNAPSHOT.jar /app/my-java-app.jar
+
 COPY faiss/multi_faiss_servers.py /app/multi_faiss_server.py
 COPY faiss/faiss_search_api_pb2.py /app/faiss_search_api_pb2.py
 COPY faiss/faiss_search_api_pb2_grpc.py /app/faiss_search_api_pb2_grpc.py
 
-CMD ["python3", "multi_faiss_server.py", "/data/faiss", "50000"]
+
+VOLUME /data/lucene
+VOLUME /data/faiss
+
+EXPOSE 9090
+EXPOSE 9092
+
+CMD ["sh", "-c", "\
+   python3 multi_faiss_server.py /data/faiss 50000 & \
+   java -jar my-java-app.jar"]

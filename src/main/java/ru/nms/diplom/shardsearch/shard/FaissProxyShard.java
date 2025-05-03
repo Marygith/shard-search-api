@@ -11,6 +11,7 @@ import java.util.List;
 public class FaissProxyShard implements SearchEngine {
     private final ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub;
     private final int shardId;
+
     public FaissProxyShard(ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub, int shardId) {
         this.stub = stub;
         this.shardId = shardId;
@@ -32,11 +33,14 @@ public class FaissProxyShard implements SearchEngine {
 //        System.out.printf("Searching similarity scores in faiss proxy shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
         var scoresRequestBuilder = SimilarityScoresRequest.newBuilder();
         docs.forEach(d -> scoresRequestBuilder.addDocuments(d.build()));
-        return stub.getSimilarityScores(
+        var result = stub.getSimilarityScores(
                 scoresRequestBuilder
-                        .setShardId(shardId)
-                        .setIndexType(IndexType.VECTOR.getNumber())
-                        .build())
-                .getResultsList();
+                    .setShardId(shardId)
+                    .setQuery(query)
+                    .setIndexType(IndexType.VECTOR.getNumber())
+                    .build())
+            .getResultsList();
+//        System.out.printf("Got %s similarity scores from faiss proxy shard %s%n", result.size(), shardId);
+        return result;
     }
 }

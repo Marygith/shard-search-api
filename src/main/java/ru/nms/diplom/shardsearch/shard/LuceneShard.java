@@ -45,7 +45,7 @@ public class LuceneShard implements SearchEngine {
                 var id = Integer.parseInt(doc.get("id"));
                 result.add(Document.newBuilder().setId(id).setFaissScore(0f).setLuceneScore(scoreDoc.score));
             }
-//            System.out.printf("Got docs from lucene shard %s with ids: %s%n", shardId, result.stream().map(Document.Builder::getId).toList());
+//            System.out.printf("Got %s docs from lucene shard %s%n", topDocs.scoreDocs.length, shardId);
 
             return result;
         } catch (Exception e) {
@@ -59,7 +59,7 @@ public class LuceneShard implements SearchEngine {
             System.out.println("lucene similarity stage was initiated for empty docs, strange");
             return List.of();
         }
-//        System.out.printf("Searching similarity scores in lucene shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
+//        System.out.printf("Searching similarity scores in lucene shard %s, for %s docs%n", shardId, docs.size());
         try {
             Query q = parser.parse(QueryParser.escape(query));
             IntSet idSet = new IntOpenHashSet(docs.size());
@@ -78,6 +78,7 @@ public class LuceneShard implements SearchEngine {
                 idToScore.put(Integer.parseInt(searcher.doc(scoreDoc.doc).get("id")), scoreDoc.score);
             }
 //            System.out.printf("Got similarity scores from lucene shard %s with ids: %s%n", shardId, idToScore.keySet());
+//            System.out.printf("Got %s similarity scores from lucene shard %s%n", idToScore.size(), shardId);
 
             return docs.stream().map(d -> d.setLuceneScore(idToScore.get(d.getId())).build()).toList();
         } catch (Exception e) {

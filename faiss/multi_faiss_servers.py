@@ -22,6 +22,7 @@ print("[MODEL] Loaded SentenceTransformer model once globally")
 
 class FaissSearchService(faiss_search_api_pb2_grpc.FaissSearchServiceServicer):
     def __init__(self, index_path, model):
+        print("about to use shared model")
         self.model = model  # Use the shared model!
         print(f"Loading FAISS index from {index_path}")
         self.index = faiss.read_index(index_path)
@@ -81,7 +82,7 @@ class FaissSearchService(faiss_search_api_pb2_grpc.FaissSearchServiceServicer):
                     print(f"Error processing doc_id {doc_id}: {e}")
                     scores[doc_id] = float('inf')
 
-            print("Returning SimilarityResponse: ", scores)
+#             print("Returning SimilarityResponse: ", scores)
 
             return faiss_search_api_pb2.SimilarityResponse(scores=scores)
 
@@ -92,6 +93,7 @@ class FaissSearchService(faiss_search_api_pb2_grpc.FaissSearchServiceServicer):
             return faiss_search_api_pb2.SimilarityResponse()
 
 def serve_faiss(index_path, port):
+    print("about to serve faiss")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     # Pass the shared model into FaissSearchService
     faiss_search_api_pb2_grpc.add_FaissSearchServiceServicer_to_server(FaissSearchService(index_path, shared_model), server)
@@ -121,23 +123,12 @@ if __name__ == '__main__':
 
         shard_ids_env = os.getenv("FAISS_SHARD_IDS")
         if not shard_ids_env:
-            raise ValueError("SHARD_IDS environment variable is not set")
+            raise ValueError("FAISS_SHARD_IDS environment variable is not set")
 
         shard_ids = [int(s.strip()) for s in shard_ids_env.split(",")]
         print(f"Initializing shards: {shard_ids}")
 #         index_files = [f for f in os.listdir(index_folder) if f.startswith('faiss_index_with_ids')]
         threads = []
-        print("list dir " + index_folder)
-        print(os.listdir(index_folder))
-        print("list dir /data:")
-        print(os.listdir("/data"))
-#         print("list dir /app/data:")
-#         print(os.listdir("/app/data"))
-        print("list dir /data/faiss:")
-        print(os.listdir("/data/faiss"))
-        print("list dir /app:")
-        print(os.listdir("/app"))
-#         print(f"about to start, index files: {index_files}")
 
         for shard_id in shard_ids:
             index_file = f"faiss_index_with_ids-{shard_id}"
@@ -147,12 +138,12 @@ if __name__ == '__main__':
                 conti
             port = ports_start + shard_id
             print(f"Starting server on port {port} for shard {shard_id} from file {full_path}")
-            t = threading.Thread(target=serve_faiss, args=(full_path, port))
+            t = threading.Thread(target=serve_faiss_with_exception_handling, args=(full_path, port))
             t.start()
             threads.append(t)
 
-            for t in threads:
-                t.join()
+        for t in threads:
+            t.join()
     except Exception as e:
         print(f"Exception during FAISS server startup: {e}")
         import traceback

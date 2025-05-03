@@ -11,6 +11,7 @@ import java.util.List;
 public class LuceneProxyShard implements SearchEngine {
     private final ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub;
     private final int shardId;
+
     public LuceneProxyShard(ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub, int shardId) {
         this.stub = stub;
         this.shardId = shardId;
@@ -29,14 +30,18 @@ public class LuceneProxyShard implements SearchEngine {
             return List.of();
         }
 //        System.out.printf("Searching similarity scores in lucene proxy shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
+//        System.out.printf("Searching similarity scores in lucene proxy shard %s, for %s docs%n", shardId, docs.size());
 
         var scoresRequestBuilder = SimilarityScoresRequest.newBuilder();
         docs.forEach(d -> scoresRequestBuilder.addDocuments(d.build()));
-        return stub.getSimilarityScores(
-                        scoresRequestBuilder
-                                .setShardId(shardId)
-                                .setIndexType(IndexType.LUCENE.getNumber())
-                                .build())
-                .getResultsList();
+        var result = stub.getSimilarityScores(
+                scoresRequestBuilder
+                    .setShardId(shardId)
+                    .setQuery(query)
+                    .setIndexType(IndexType.LUCENE.getNumber())
+                    .build())
+            .getResultsList();
+//        System.out.printf("Got %s similarity scores from lucene proxy shard %s%n", result.size(), shardId);
+return result;
     }
 }

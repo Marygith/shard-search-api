@@ -1,25 +1,25 @@
 version: '3.8'
 
 services:
-#  clusterstateapi:
-#    image: cluster-state-api:latest
-#    container_name: clusterstateapi
-#    ports:
-#      - "9091:9091"
-#    networks:
-#      - mynet
-#
-#  searchgatewayapi:
-#    image: search-gateway-api:latest
-#    container_name: searchgatewayapi
-#    environment:
-#      - CLUSTER_STATE_HOST=clusterstateapi
-#    ports:
-#      - "8080:8080"
-#    depends_on:
-#      - clusterstateapi
-#    networks:
-#      - mynet
+  clusterstateapi:
+    image: cluster-state-api:latest
+    container_name: clusterstateapi
+    ports:
+      - "9091:9091"
+    networks:
+      - mynet
+
+  searchgatewayapi:
+    image: search-gateway-api:latest
+    container_name: searchgatewayapi
+    environment:
+      - CLUSTER_STATE_HOST=clusterstateapi
+    ports:
+      - "8080:8080"
+    depends_on:
+      - clusterstateapi
+    networks:
+      - mynet
 
 
 
@@ -66,7 +66,7 @@ services:
       - PORT=9092
       - FAISS_SHARD_IDS=0,2
     volumes:
-      - ./data/lucene:/data/lucene
+      - ./data/lucene:/app/data/lucene
       - ./data/lucene/output:/data/faiss
     ports:
       - "9092:9092"
@@ -84,10 +84,10 @@ services:
       - PORT=9090
       - FAISS_SHARD_IDS=0,1
     volumes:
-      - ./data/lucene:/data/lucene
-      - ./data/lucene/output:/data/faiss
+      - ./data2/lucene:/app/data/lucene
+      - ./data2/lucene/output:/data/faiss
     ports:
-      - "9092:9092"
+      - "9090:9090"
     depends_on:
       - clusterstateapi
     networks:

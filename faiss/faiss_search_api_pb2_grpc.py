@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import faiss_search_api_pb2 as faiss__search__api__pb2
+from api import faiss_search_api_pb2 as api_dot_faiss__search__api__pb2
 
 GRPC_GENERATED_VERSION = '1.71.0'
 GRPC_VERSION = grpc.__version__
@@ -18,7 +18,7 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in faiss_search_api_pb2_grpc.py depends on'
+        + f' but the generated code in api/faiss_search_api_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
@@ -36,13 +36,13 @@ class FaissSearchServiceStub(object):
         """
         self.search = channel.unary_unary(
                 '/faiss.FaissSearchService/search',
-                request_serializer=faiss__search__api__pb2.FaissSearchRequest.SerializeToString,
-                response_deserializer=faiss__search__api__pb2.FaissSearchResponse.FromString,
+                request_serializer=api_dot_faiss__search__api__pb2.FaissSearchRequest.SerializeToString,
+                response_deserializer=api_dot_faiss__search__api__pb2.FaissSearchResponse.FromString,
                 _registered_method=True)
-        self.getSimilarityScores = channel.unary_unary(
-                '/faiss.FaissSearchService/getSimilarityScores',
-                request_serializer=faiss__search__api__pb2.SimilarityRequest.SerializeToString,
-                response_deserializer=faiss__search__api__pb2.SimilarityResponse.FromString,
+        self.encodeQuery = channel.unary_unary(
+                '/faiss.FaissSearchService/encodeQuery',
+                request_serializer=api_dot_faiss__search__api__pb2.EncodeRequest.SerializeToString,
+                response_deserializer=api_dot_faiss__search__api__pb2.EncodedQuery.FromString,
                 _registered_method=True)
 
 
@@ -55,7 +55,7 @@ class FaissSearchServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def getSimilarityScores(self, request, context):
+    def encodeQuery(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -66,13 +66,13 @@ def add_FaissSearchServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'search': grpc.unary_unary_rpc_method_handler(
                     servicer.search,
-                    request_deserializer=faiss__search__api__pb2.FaissSearchRequest.FromString,
-                    response_serializer=faiss__search__api__pb2.FaissSearchResponse.SerializeToString,
+                    request_deserializer=api_dot_faiss__search__api__pb2.FaissSearchRequest.FromString,
+                    response_serializer=api_dot_faiss__search__api__pb2.FaissSearchResponse.SerializeToString,
             ),
-            'getSimilarityScores': grpc.unary_unary_rpc_method_handler(
-                    servicer.getSimilarityScores,
-                    request_deserializer=faiss__search__api__pb2.SimilarityRequest.FromString,
-                    response_serializer=faiss__search__api__pb2.SimilarityResponse.SerializeToString,
+            'encodeQuery': grpc.unary_unary_rpc_method_handler(
+                    servicer.encodeQuery,
+                    request_deserializer=api_dot_faiss__search__api__pb2.EncodeRequest.FromString,
+                    response_serializer=api_dot_faiss__search__api__pb2.EncodedQuery.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -100,8 +100,8 @@ class FaissSearchService(object):
             request,
             target,
             '/faiss.FaissSearchService/search',
-            faiss__search__api__pb2.FaissSearchRequest.SerializeToString,
-            faiss__search__api__pb2.FaissSearchResponse.FromString,
+            api_dot_faiss__search__api__pb2.FaissSearchRequest.SerializeToString,
+            api_dot_faiss__search__api__pb2.FaissSearchResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -113,7 +113,7 @@ class FaissSearchService(object):
             _registered_method=True)
 
     @staticmethod
-    def getSimilarityScores(request,
+    def encodeQuery(request,
             target,
             options=(),
             channel_credentials=None,
@@ -126,9 +126,9 @@ class FaissSearchService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/faiss.FaissSearchService/getSimilarityScores',
-            faiss__search__api__pb2.SimilarityRequest.SerializeToString,
-            faiss__search__api__pb2.SimilarityResponse.FromString,
+            '/faiss.FaissSearchService/encodeQuery',
+            api_dot_faiss__search__api__pb2.EncodeRequest.SerializeToString,
+            api_dot_faiss__search__api__pb2.EncodedQuery.FromString,
             options,
             channel_credentials,
             insecure,

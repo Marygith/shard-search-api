@@ -7,7 +7,7 @@ option java_multiple_files = true;
 
 service FaissSearchService {
   rpc search (FaissSearchRequest) returns (FaissSearchResponse);
-  rpc getSimilarityScores (SimilarityRequest) returns (SimilarityResponse);
+  rpc encodeQuery (EncodeRequest) returns (EncodedQuery);
 }
 
 message FaissSearchRequest {
@@ -27,13 +27,12 @@ message FaissSearchResponse {
 
 // === NEW FOR SIMILARITY ===
 
-message SimilarityRequest {
+message EncodeRequest {
   string query = 1;
-  map<int32, Vector> id_to_vector = 2;
 }
 
-message SimilarityResponse {
-  map<int32, float> scores = 1;
+message EncodedQuery {
+  Vector vector = 1;
 }
 
 message Vector {

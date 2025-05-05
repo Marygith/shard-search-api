@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Singleton
 public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchServiceImplBase {
@@ -57,6 +58,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 .setNodeId(nodeId)
                 .build();
 
+        var cachedThreadPool = Executors.newCachedThreadPool();
         ShardConfigList shardConfigList = clusterStateStub.getShardsForNode(request);
 //        System.out.println("\nloaded config: " + shardConfigList);
         List<ShardConfig> assignedShards = shardConfigList.getShardsList();
@@ -78,7 +80,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 if (type.equals("faiss") || type.equals("both")) {
                     FaissSearchServiceGrpc.FaissSearchServiceBlockingStub stub = stubManager.getFaissStub(shardId);
                     PassageReader passageReader = new PassageReader(embeddingsCsvFile.toString(), 384);
-                    FaissShard faissShard = new FaissShard(stub, passageReader, shardId);
+                    FaissShard faissShard = new FaissShard(stub, passageReader, shardId, cachedThreadPool);
                     faissShards.put(shardId, faissShard);
                     System.out.printf("Initialized FAISS shard %d on node %s%n", shardId, nodeId);
                 }

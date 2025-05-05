@@ -56,41 +56,21 @@ class FaissSearchService(faiss_search_api_pb2_grpc.FaissSearchServiceServicer):
 
         return faiss_search_api_pb2.FaissSearchResponse(results=results)
 
-    def getSimilarityScores(self, request, context):
+    def encodeQuery(self, request, context):
         try:
-#             print("Received SimilarityRequest")
+            print("Received EncodeRequest")
 
             query = request.query
-            ids_to_vector = request.id_to_vector
-
             query_embedding = self.model.encode([query])[0].astype(np.float32)
 
-            scores = {}
-
-            for doc_id, vector_message in ids_to_vector.items():
-                try:
-                    passage_embedding = np.array(vector_message.values, dtype=np.float32)
-
-                    if passage_embedding.shape != (384,):
-                        raise ValueError(
-                            f"Invalid vector shape for doc_id {doc_id}, vector shape is {passage_embedding.shape}")
-
-                    l2_distance = np.sum((query_embedding - passage_embedding) ** 2)
-                    scores[doc_id] = l2_distance
-
-                except Exception as e:
-                    print(f"Error processing doc_id {doc_id}: {e}")
-                    scores[doc_id] = float('inf')
-
-#             print("Returning SimilarityResponse: ", scores)
-
-            return faiss_search_api_pb2.SimilarityResponse(scores=scores)
-
+            return faiss_search_api_pb2.EncodedQuery(
+                vector=faiss_search_api_pb2.Vector(values=query_embedding.tolist())
+            )
         except Exception as e:
-            print("Error in getSimilarityScores:", e)
+            print("Error encoding query:", e)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
-            return faiss_search_api_pb2.SimilarityResponse()
+            return faiss_search_api_pb2.EncodedQuery()
 
 def serve_faiss(index_path, port):
     print("about to serve faiss")
@@ -136,7 +116,7 @@ if __name__ == '__main__':
             full_path = os.path.join(index_folder, index_file)
             if not os.path.exists(full_path):
                 print(f"[WARNING] Index file not found: {full_path}")
-                conti
+                continue
             port = ports_start + shard_id
             print(f"Starting server on port {port} for shard {shard_id} from file {full_path}")
             t = threading.Thread(target=serve_faiss_with_exception_handling, args=(full_path, port))

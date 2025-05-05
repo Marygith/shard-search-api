@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.*;
 
 public class PassageReader {
-    private final Map<Integer, List<Float>> idToVector;
+    private final Map<Integer, float[]> idToVector;
     private final int vectorSize;
 
     public PassageReader(String pathToFile, int vectorSize) {
@@ -30,17 +30,16 @@ public class PassageReader {
                 }
 
                 Integer id = Integer.parseInt(parts[0]);
-                var vector = new ArrayList<Float>();
+                var vector = new float[vectorSize];
                 for (int i = 0; i < vectorSize; i++) {
-                    vector.add(Float.parseFloat(parts[i + 1]));
+                    vector[i] = Float.parseFloat(parts[i + 1]);
                 }
-
                 idToVector.put(id, vector);
             }
         }
     }
 
-    public List<Float> getVectorById(Integer id) {
+    public float[] getVectorById(Integer id) {
         return idToVector.get(id);
     }
 }

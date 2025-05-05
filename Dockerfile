@@ -29,4 +29,4 @@ EXPOSE 9090-9102
 
 CMD ["sh", "-c", "\
    python3 multi_faiss_server.py /data/faiss 50000 & \
-   java -jar my-java-app.jar"]
+   java --add-modules jdk.incubator.vector -jar my-java-app.jar"]

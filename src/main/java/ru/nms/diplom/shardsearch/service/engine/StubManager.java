@@ -39,7 +39,7 @@ public class StubManager {
     }
 
     public ShardServiceGrpc.ShardServiceBlockingStub getClusterStateStub() {
-        ManagedChannel channel = ManagedChannelBuilder.forAddress(clusterStateApiHost, 9091)
+        ManagedChannel channel = ManagedChannelBuilder.forAddress(clusterStateApiHost, 8081)
                 .usePlaintext()
                 .build();
         return ShardServiceGrpc.newBlockingStub(channel);

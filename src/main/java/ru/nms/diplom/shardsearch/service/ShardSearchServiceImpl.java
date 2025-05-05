@@ -2,6 +2,7 @@ package ru.nms.diplom.shardsearch.service;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.protobuf.Empty;
 import io.grpc.stub.StreamObserver;
 import ru.nms.diplom.clusterstate.service.NodeRequest;
 import ru.nms.diplom.clusterstate.service.ShardConfig;
@@ -13,7 +14,9 @@ import ru.nms.diplom.shardsearch.factory.ProxyShardBuilder;
 import ru.nms.diplom.shardsearch.model.IndexType;
 import ru.nms.diplom.shardsearch.service.scoreenricher.PassageReader;
 import ru.nms.diplom.shardsearch.service.engine.*;
+import ru.nms.diplom.shardsearch.shard.FaissProxyShard;
 import ru.nms.diplom.shardsearch.shard.FaissShard;
+import ru.nms.diplom.shardsearch.shard.LuceneProxyShard;
 import ru.nms.diplom.shardsearch.shard.LuceneShard;
 
 import java.io.IOException;
@@ -55,7 +58,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 .build();
 
         ShardConfigList shardConfigList = clusterStateStub.getShardsForNode(request);
-        System.out.println("\nloaded config: " + shardConfigList);
+//        System.out.println("\nloaded config: " + shardConfigList);
         List<ShardConfig> assignedShards = shardConfigList.getShardsList();
 
         for (var entry : assignedShards) {
@@ -69,7 +72,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 if (type.equals("lucene") || type.equals("both")) {
                     LuceneShard luceneShard = luceneShardFactory.initializeShard(shardId, luceneIndexPath, passageCsvFile);
                     luceneShards.put(shardId, luceneShard);
-//                    System.out.printf("Initialized Lucene shard %d%n", shardId);
+                    System.out.printf("Initialized Lucene shard %d on node %s%n", shardId, nodeId);
                 }
 
                 if (type.equals("faiss") || type.equals("both")) {
@@ -77,7 +80,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                     PassageReader passageReader = new PassageReader(embeddingsCsvFile.toString(), 384);
                     FaissShard faissShard = new FaissShard(stub, passageReader, shardId);
                     faissShards.put(shardId, faissShard);
-//                    System.out.printf("Initialized FAISS shard %d%n", shardId);
+                    System.out.printf("Initialized FAISS shard %d on node %s%n", shardId, nodeId);
                 }
 
             } catch (IOException e) {
@@ -85,11 +88,14 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 e.printStackTrace();
             }
         }
+
     }
 
     @Override
     public void shardSearch(ShardSearchRequest request, StreamObserver<ShardSearchResponse> responseObserver) {
-//        System.out.println("came shard search request " + request);
+        String nodeId = System.getenv("NODE_ID");
+
+        System.out.printf("node %s received shard search request %n", nodeId);
         List<Integer> shardIds = request.getShardIdsList();
         List<CompletableFuture<Void>> futures = new ArrayList<>();
 
@@ -100,7 +106,8 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 case LUCENE -> luceneShards.get(shardId);
             };
             if (searchDocsSearchEngine == null) {
-                addFailedResult(new RuntimeException("Shard with id %s of type %s was absent on the node".formatted(shardId, indexType.name())), responseObserver);
+                addFailedResult(new RuntimeException("Shard with id %s of type %s was absent on the node %s".formatted(shardId, indexType.name(), nodeId)), responseObserver);
+                return;
             }
             var getSimilarityScoresEngine = switch (indexType) {
                 case LUCENE -> faissShards.computeIfAbsent(shardId, proxyShardBuilder::buildFaissProxyShard);
@@ -118,16 +125,67 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
 
     @Override
     public void getSimilarityScores(SimilarityScoresRequest request, StreamObserver<ShardSearchResponse> responseObserver) {
+        String nodeId = System.getenv("NODE_ID");
+        System.out.printf("node %s received similarity scores request %n", nodeId);
 
         IndexType indexType = IndexType.fromNumber(request.getIndexType());
         var similarityDocsEngine = switch (indexType) {
-            case VECTOR -> faissShards.computeIfAbsent(request.getShardId(), proxyShardBuilder::buildFaissProxyShard);
-            case LUCENE -> luceneShards.computeIfAbsent(request.getShardId(), proxyShardBuilder::buildLuceneProxyShard);
+            case VECTOR -> faissShards.get(request.getShardId());
+            case LUCENE -> luceneShards.get(request.getShardId());
         };
+        if (similarityDocsEngine == null) {
+            addFailedResult(new RuntimeException("Shard with id %s of type %s was absent on the node %s".formatted(request.getShardId(), indexType.name(), nodeId)), responseObserver);
+            return;
+        }
 //        System.out.println("came similarity scores request for type %s from another shard".formatted(indexType.name()) + request);
 
         var docs = similarityDocsEngine.enrichWithSimilarityScores(request.getDocumentsList().stream().map(Document::toBuilder).toList(), request.getQuery());
         responseObserver.onNext(ShardSearchResponse.newBuilder().addAllResults(docs).build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void getMetricData(Empty request, StreamObserver<MetricDataResponse> responseObserver) {
+        var responseBuilder = MetricDataResponse.newBuilder();
+        for (var idToShard: faissShards.entrySet()) {
+            if (idToShard.getValue() instanceof FaissProxyShard faissProxyShard) {
+                responseBuilder.addFaissProxyShardMetrics(ProxyShardMetrics.newBuilder()
+                        .setShardId(faissProxyShard.getShardId())
+                        .setAmountOfSimilarityDocsRequests(faissProxyShard.getOverallSimilarityScoresCounter().intValue())
+                        .setSimilarityDocsTime(faissProxyShard.getOverallSimilarityScoresTime().longValue())
+                    .build());
+            }
+            if (idToShard.getValue() instanceof FaissShard faissShard) {
+                responseBuilder.addFaissShardMetrics(ShardMetrics.newBuilder()
+                    .setShardId(faissShard.getShardId())
+                    .setAmountOfSimilarityDocsRequests(faissShard.getOverallSimilarityScoresCounter().intValue())
+                    .setSimilarityDocsTime(faissShard.getOverallSimilarityScoresTime().longValue())
+                    .setAmountOfSearchDocsRequests(faissShard.getOverallSearchDocCounter().intValue())
+                    .setSearchDocsTime(faissShard.getOverallSearchDocTime().longValue())
+                    .build());
+            }
+        }
+
+
+        for (var idToShard: luceneShards.entrySet()) {
+            if (idToShard.getValue() instanceof LuceneProxyShard luceneProxyShard) {
+                responseBuilder.addLuceneProxyShardMetrics(ProxyShardMetrics.newBuilder()
+                    .setShardId(luceneProxyShard.getShardId())
+                    .setAmountOfSimilarityDocsRequests(luceneProxyShard.getOverallSimilarityScoresCounter().intValue())
+                    .setSimilarityDocsTime(luceneProxyShard.getOverallSimilarityScoresTime().longValue())
+                    .build());
+            }
+            if (idToShard.getValue() instanceof LuceneShard luceneShard) {
+                responseBuilder.addLuceneShardMetrics(ShardMetrics.newBuilder()
+                    .setShardId(luceneShard.getShardId())
+                    .setAmountOfSimilarityDocsRequests(luceneShard.getOverallSimilarityScoresCounter().intValue())
+                    .setSimilarityDocsTime(luceneShard.getOverallSimilarityScoresTime().longValue())
+                    .setAmountOfSearchDocsRequests(luceneShard.getOverallSearchDocCounter().intValue())
+                    .setSearchDocsTime(luceneShard.getOverallSearchDocTime().longValue())
+                    .build());
+            }
+        }
+        responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
     }
 

@@ -3,6 +3,8 @@ package ru.nms.diplom.shardsearch.shard;
 import it.unimi.dsi.fastutil.ints.Int2FloatOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.index.DirectoryReader;
@@ -23,6 +25,10 @@ public class LuceneShard implements SearchEngine {
     private final IndexSearcher searcher;
     private final QueryParser parser;
     private final int shardId;
+    private final AtomicLong overallSearchDocTime = new AtomicLong(0);
+    private final AtomicLong overallSimilarityScoresTime = new AtomicLong(0);
+    private final AtomicInteger overallSearchDocCounter = new AtomicInteger(0);
+    private final AtomicInteger overallSimilarityScoresCounter = new AtomicInteger(0);
 
     public LuceneShard(Path indexPath, int shardId) throws IOException {
         this.shardId = shardId;
@@ -33,6 +39,7 @@ public class LuceneShard implements SearchEngine {
 
     @Override
     public List<Document.Builder> searchDocs(String query, int k) {
+        var start = System.currentTimeMillis();
 
 //        System.out.println("Searching docs in lucene shard " + shardId);
 
@@ -47,6 +54,8 @@ public class LuceneShard implements SearchEngine {
             }
 //            System.out.printf("Got %s docs from lucene shard %s%n", topDocs.scoreDocs.length, shardId);
 
+            overallSearchDocTime.addAndGet(System.currentTimeMillis() - start);
+            overallSearchDocCounter.incrementAndGet();
             return result;
         } catch (Exception e) {
             throw new CompletionException("Failed to find docs in lucene shard %s".formatted(shardId), e);
@@ -55,6 +64,8 @@ public class LuceneShard implements SearchEngine {
 
     @Override
     public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
+        var start = System.currentTimeMillis();
+
         if (docs.isEmpty()) {
             System.out.println("lucene similarity stage was initiated for empty docs, strange");
             return List.of();
@@ -80,10 +91,33 @@ public class LuceneShard implements SearchEngine {
 //            System.out.printf("Got similarity scores from lucene shard %s with ids: %s%n", shardId, idToScore.keySet());
 //            System.out.printf("Got %s similarity scores from lucene shard %s%n", idToScore.size(), shardId);
 
-            return docs.stream().map(d -> d.setLuceneScore(idToScore.get(d.getId())).build()).toList();
+            var result = docs.stream().map(d -> d.setLuceneScore(idToScore.get(d.getId())).build()).toList();
+            overallSimilarityScoresTime.addAndGet(System.currentTimeMillis() - start);
+            overallSimilarityScoresCounter.incrementAndGet();
+            return result;
         } catch (Exception e) {
             throw new CompletionException("Failed to get similarity scores in lucene shard %s".formatted(shardId), e);
         }
+    }
+
+    public int getShardId() {
+        return shardId;
+    }
+
+    public AtomicLong getOverallSearchDocTime() {
+        return overallSearchDocTime;
+    }
+
+    public AtomicLong getOverallSimilarityScoresTime() {
+        return overallSimilarityScoresTime;
+    }
+
+    public AtomicInteger getOverallSearchDocCounter() {
+        return overallSearchDocCounter;
+    }
+
+    public AtomicInteger getOverallSimilarityScoresCounter() {
+        return overallSimilarityScoresCounter;
     }
 }
 

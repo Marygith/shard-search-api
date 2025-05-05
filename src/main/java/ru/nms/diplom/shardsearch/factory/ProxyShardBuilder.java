@@ -25,6 +25,7 @@ public class ProxyShardBuilder {
         String nodeId = System.getenv("NODE_ID");
         System.out.printf("node %s missing shard %s of type FAISS, asking for address%n", nodeId, shardId);
         var response = stub.getShardAddress(ShardAddressRequest.newBuilder().setShardId(shardId).setIndexType(IndexType.VECTOR.getNumber()).build());
+        System.out.printf("node %s about to build proxy faiss shard with host %s and port %s for shard %s%n", nodeId, response.getHost(), response.getPort(), shardId);
         var shardSearchStub = stubManager.getBaseStub(response.getHost(), response.getPort());
         return new FaissProxyShard(shardSearchStub, shardId);
     }
@@ -33,6 +34,8 @@ public class ProxyShardBuilder {
         String nodeId = System.getenv("NODE_ID");
         System.out.printf("node %s missing shard %s of type LUCENE, asking for address%n", nodeId, shardId);
         var response = stub.getShardAddress(ShardAddressRequest.newBuilder().setShardId(shardId).setIndexType(IndexType.LUCENE.getNumber()).build());
+        System.out.printf("node %s about to build proxy lucene shard with host %s and port %s for shard %s%n", nodeId, response.getHost(), response.getPort(), shardId);
+
         var shardSearchStub = stubManager.getBaseStub(response.getHost(), response.getPort());
         return new LuceneProxyShard(shardSearchStub, shardId);
     }

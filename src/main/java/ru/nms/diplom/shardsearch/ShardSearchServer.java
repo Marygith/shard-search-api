@@ -11,6 +11,10 @@ import ru.nms.diplom.shardsearch.service.ShardSearchServiceImpl;
 public class ShardSearchServer {
     public static void main(String[] args) throws Exception {
         // Initialize Guice
+        long maxMemory = Runtime.getRuntime().maxMemory() / (1024 * 1024);
+        long totalMemory = Runtime.getRuntime().totalMemory() / (1024 * 1024);
+        System.out.println("Xms (totalMemory): " + totalMemory + " MB");
+        System.out.println("Xmx (maxMemory): " + maxMemory + " MB");
         Injector injector = Guice.createInjector(new ShardSearchServiceModule());
 
         // Get your service implementation

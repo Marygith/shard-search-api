@@ -25,8 +25,7 @@ COPY faiss/faiss_search_api_pb2_grpc.py /app/faiss_search_api_pb2_grpc.py
 VOLUME /data/lucene
 VOLUME /data/faiss
 
-EXPOSE 9090
-EXPOSE 9092
+EXPOSE 9090-9102
 
 CMD ["sh", "-c", "\
    python3 multi_faiss_server.py /data/faiss 50000 & \

@@ -1,5 +1,7 @@
 package ru.nms.diplom.shardsearch.shard;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import ru.nms.diplom.shardsearch.Document;
 import ru.nms.diplom.shardsearch.ShardSearchServiceGrpc;
 import ru.nms.diplom.shardsearch.SimilarityScoresRequest;
@@ -8,9 +10,12 @@ import ru.nms.diplom.shardsearch.service.engine.SearchEngine;
 
 import java.util.List;
 
+
 public class FaissProxyShard implements SearchEngine {
     private final ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub;
     private final int shardId;
+    private final AtomicLong overallSimilarityScoresTime = new AtomicLong(0);
+    private final AtomicInteger overallSimilarityScoresCounter = new AtomicInteger(0);
 
     public FaissProxyShard(ShardSearchServiceGrpc.ShardSearchServiceBlockingStub stub, int shardId) {
         this.stub = stub;
@@ -24,6 +29,8 @@ public class FaissProxyShard implements SearchEngine {
 
     @Override
     public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
+        var start = System.currentTimeMillis();
+
         if (docs.isEmpty()) {
 //            System.out.println("faiss proxy similarity stage was initiated for empty docs");
 
@@ -41,6 +48,20 @@ public class FaissProxyShard implements SearchEngine {
                     .build())
             .getResultsList();
 //        System.out.printf("Got %s similarity scores from faiss proxy shard %s%n", result.size(), shardId);
+        overallSimilarityScoresTime.addAndGet(System.currentTimeMillis() - start);
+        overallSimilarityScoresCounter.incrementAndGet();
         return result;
+    }
+
+    public int getShardId() {
+        return shardId;
+    }
+
+    public AtomicLong getOverallSimilarityScoresTime() {
+        return overallSimilarityScoresTime;
+    }
+
+    public AtomicInteger getOverallSimilarityScoresCounter() {
+        return overallSimilarityScoresCounter;
     }
 }

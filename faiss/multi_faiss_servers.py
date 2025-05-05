@@ -58,7 +58,7 @@ class FaissSearchService(faiss_search_api_pb2_grpc.FaissSearchServiceServicer):
 
     def getSimilarityScores(self, request, context):
         try:
-            print("Received SimilarityRequest")
+#             print("Received SimilarityRequest")
 
             query = request.query
             ids_to_vector = request.id_to_vector
@@ -123,7 +123,8 @@ if __name__ == '__main__':
 
         shard_ids_env = os.getenv("FAISS_SHARD_IDS")
         if not shard_ids_env:
-            raise ValueError("FAISS_SHARD_IDS environment variable is not set")
+            print("shard ids are not set, exiting")
+            sys.exit(0)
 
         shard_ids = [int(s.strip()) for s in shard_ids_env.split(",")]
         print(f"Initializing shards: {shard_ids}")
@@ -148,22 +149,3 @@ if __name__ == '__main__':
         print(f"Exception during FAISS server startup: {e}")
         import traceback
         traceback.print_exc()
-
-#         for index_file in index_files:
-#             try:
-#                 shard_id = int(index_file.split("-")[-1])
-#                 port = ports_start + shard_id
-#                 full_path = os.path.join(index_folder, index_file)
-#                 print(f"starting server on port {port} for shard {shard_id} from file {full_path}")
-#                 t = threading.Thread(target=serve_faiss_with_exception_handling, args=(full_path, port))
-#                 t.start()
-#                 threads.append(t)
-#             except Exception as e:
-#                 print(f"[❌ ERROR] Failed to start thread for index file: {index_file}")
-#                 traceback.print_exc()
-#
-#         for t in threads:
-#             t.join()
-#     except Exception as e:
-#         print("[❌ FATAL ERROR] Failed during init phase")
-#         traceback.print_exc()

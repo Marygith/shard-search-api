@@ -10,7 +10,6 @@ RUN pip install --upgrade pip
 
 RUN pip install grpcio
 RUN pip install grpcio-tools
-RUN pip install sentence-transformers
 RUN pip install faiss-cpu
 RUN pip install numpy
 WORKDIR /app

@@ -23,20 +23,18 @@ public class FaissProxyShard implements SearchEngine {
     }
 
     @Override
-    public List<Document.Builder> searchDocs(String query, int k) {
+    public List<Document.Builder> searchDocs(String query, int k, List<Float> encodedQuery) {
         throw new UnsupportedOperationException("Proxy shards are supposed to be used only for similarity requests");
     }
 
     @Override
-    public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
+    public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query, List<Float> encodedQuery) {
         var start = System.currentTimeMillis();
 
         if (docs.isEmpty()) {
-//            System.out.println("faiss proxy similarity stage was initiated for empty docs");
-
             return List.of();
         }
-//        System.out.printf("Searching similarity scores in faiss proxy shard %s, for %s docs%n", shardId, docs.size());
+        System.out.printf("Searching similarity scores in faiss proxy shard %s, for %s docs%n", shardId, docs.size());
 //        System.out.printf("Searching similarity scores in faiss proxy shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
         var scoresRequestBuilder = SimilarityScoresRequest.newBuilder();
         docs.forEach(d -> scoresRequestBuilder.addDocuments(d.build()));
@@ -45,6 +43,7 @@ public class FaissProxyShard implements SearchEngine {
                     .setShardId(shardId)
                     .setQuery(query)
                     .setIndexType(IndexType.VECTOR.getNumber())
+                    .addAllEncodedQuery(encodedQuery)
                     .build())
             .getResultsList();
 //        System.out.printf("Got %s similarity scores from faiss proxy shard %s%n", result.size(), shardId);

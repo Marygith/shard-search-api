@@ -115,7 +115,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
                 case LUCENE -> faissShards.computeIfAbsent(shardId, proxyShardBuilder::buildFaissProxyShard);
                 case VECTOR -> luceneShards.computeIfAbsent(shardId, proxyShardBuilder::buildLuceneProxyShard);
             };
-            var searchTask = createSearchDocsTask(request.getQuery(), request.getK(), searchDocsSearchEngine, getSimilarityScoresEngine, responseObserver);
+            var searchTask = createSearchDocsTask(request.getQuery(), request.getK(), searchDocsSearchEngine, getSimilarityScoresEngine, request.getEncodedQueryList(), responseObserver);
             futures.add(searchTask);
         }
 
@@ -141,7 +141,7 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
         }
 //        System.out.println("came similarity scores request for type %s from another shard".formatted(indexType.name()) + request);
 
-        var docs = similarityDocsEngine.enrichWithSimilarityScores(request.getDocumentsList().stream().map(Document::toBuilder).toList(), request.getQuery());
+        var docs = similarityDocsEngine.enrichWithSimilarityScores(request.getDocumentsList().stream().map(Document::toBuilder).toList(), request.getQuery(), request.getEncodedQueryList());
         responseObserver.onNext(ShardSearchResponse.newBuilder().addAllResults(docs).build());
         responseObserver.onCompleted();
     }
@@ -196,11 +196,12 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
             int k,
             SearchEngine searchDocsEngine,
             SearchEngine getSimilarityScoresEngine,
+            List<Float> encodedQuery,
             StreamObserver<ShardSearchResponse> observer) {
 
         return CompletableFuture
-                .supplyAsync(() -> searchDocsEngine.searchDocs(query, k), executor)
-                .thenApply(docs -> getSimilarityScoresEngine.enrichWithSimilarityScores(docs, query))
+                .supplyAsync(() -> searchDocsEngine.searchDocs(query, k, encodedQuery), executor)
+                .thenApply(docs -> getSimilarityScoresEngine.enrichWithSimilarityScores(docs, query, encodedQuery))
                 .thenApply(docs -> ShardSearchResponse.newBuilder().addAllResults(docs).build())
                 .handle((response, throwable) -> {
                     if (throwable != null) {
@@ -213,7 +214,6 @@ public class ShardSearchServiceImpl extends ShardSearchServiceGrpc.ShardSearchSe
     }
 
     private synchronized void addResult(ShardSearchResponse response, StreamObserver<ShardSearchResponse> observer) {
-//        System.out.println("sending response back: " + response);
             observer.onNext(response);
     }
 

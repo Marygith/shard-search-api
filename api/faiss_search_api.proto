@@ -11,7 +11,7 @@ service FaissSearchService {
 }
 
 message FaissSearchRequest {
-  string query = 1;
+  repeated float query = 1;
   int32 k = 2;
   bool normalized = 3;
 }

@@ -11,7 +11,9 @@ message ShardSearchRequest {
   string query = 1;
   int32 k = 2;
   int32 indexType = 3;           // 0 = FAISS, 1 = Lucene, or enum if preferred
-  repeated int32 shard_ids = 4;  // List of shard IDs on this node to search
+  repeated int32 shard_ids = 4;
+  repeated float encodedQuery = 5;
+  // List of shard IDs on this node to search
 }
 
 // Single document result from a shard
@@ -31,6 +33,7 @@ message SimilarityScoresRequest {
     int32 shardId = 2;
     int32 indexType = 3;
     string query = 4;
+    repeated float encodedQuery = 5;
 }
 
 message MetricDataResponse {

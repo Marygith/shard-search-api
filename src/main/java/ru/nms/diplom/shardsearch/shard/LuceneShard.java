@@ -38,10 +38,10 @@ public class LuceneShard implements SearchEngine {
     }
 
     @Override
-    public List<Document.Builder> searchDocs(String query, int k) {
+    public List<Document.Builder> searchDocs(String query, int k, List<Float> encodedQuery) {
         var start = System.currentTimeMillis();
 
-//        System.out.println("Searching docs in lucene shard " + shardId);
+        System.out.println("Searching docs in lucene shard " + shardId);
 
         try {
             Query q = parser.parse(QueryParser.escape(query));
@@ -52,7 +52,6 @@ public class LuceneShard implements SearchEngine {
                 var id = Integer.parseInt(doc.get("id"));
                 result.add(Document.newBuilder().setId(id).setFaissScore(0f).setLuceneScore(scoreDoc.score));
             }
-//            System.out.printf("Got %s docs from lucene shard %s%n", topDocs.scoreDocs.length, shardId);
 
             overallSearchDocTime.addAndGet(System.currentTimeMillis() - start);
             overallSearchDocCounter.incrementAndGet();
@@ -63,14 +62,14 @@ public class LuceneShard implements SearchEngine {
     }
 
     @Override
-    public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
+    public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query, List<Float> encodedQuery) {
         var start = System.currentTimeMillis();
 
         if (docs.isEmpty()) {
             System.out.println("lucene similarity stage was initiated for empty docs, strange");
             return List.of();
         }
-//        System.out.printf("Searching similarity scores in lucene shard %s, for %s docs%n", shardId, docs.size());
+        System.out.printf("Searching similarity scores in lucene shard %s, for %s docs%n", shardId, docs.size());
         try {
             Query q = parser.parse(QueryParser.escape(query));
             IntSet idSet = new IntOpenHashSet(docs.size());
@@ -88,9 +87,6 @@ public class LuceneShard implements SearchEngine {
             for (var scoreDoc : topDocs.scoreDocs) {
                 idToScore.put(Integer.parseInt(searcher.doc(scoreDoc.doc).get("id")), scoreDoc.score);
             }
-//            System.out.printf("Got similarity scores from lucene shard %s with ids: %s%n", shardId, idToScore.keySet());
-//            System.out.printf("Got %s similarity scores from lucene shard %s%n", idToScore.size(), shardId);
-
             var result = docs.stream().map(d -> d.setLuceneScore(idToScore.get(d.getId())).build()).toList();
             overallSimilarityScoresTime.addAndGet(System.currentTimeMillis() - start);
             overallSimilarityScoresCounter.incrementAndGet();

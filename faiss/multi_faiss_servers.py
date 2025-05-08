@@ -5,7 +5,6 @@ import grpc
 import faiss_search_api_pb2
 import faiss_search_api_pb2_grpc
 
-from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 import time
@@ -13,70 +12,34 @@ import threading
 import sys
 import os
 
-print("start of python app")
-# ======== GLOBAL MODEL LOADING ===========
-# Load the model ONCE globally, before any threads are started
-shared_model = SentenceTransformer('all-MiniLM-L6-v2')
-print("[MODEL] Loaded SentenceTransformer model once globally")
-# ==========================================
-
 class FaissSearchService(faiss_search_api_pb2_grpc.FaissSearchServiceServicer):
-    def __init__(self, index_path, model):
-        print("about to use shared model")
-        self.model = model  # Use the shared model!
+    def __init__(self, index_path):
         print(f"Loading FAISS index from {index_path}")
         self.index = faiss.read_index(index_path)
 
     def search(self, request, context):
         query = request.query
+        print("came query: ")
         k = request.k
-        normalized = request.normalized
-
-        query_embedding = self.model.encode([query], convert_to_tensor=False)
-        query_embedding = query_embedding.astype('float32')
+        query_embedding = np.array(request.query, dtype=np.float32).reshape(1, -1)
 
         distances, ids = self.index.search(query_embedding, k)
         distances = distances[0]
         ids = ids[0]
-
-        if normalized:
-            max_distance = max(distances)
-            min_distance = min(distances)
-            norm_dists = [
-                1 - (d - min_distance) / (max_distance - min_distance) if max_distance > min_distance else 1.0
-                for d in distances
-            ]
-        else:
-            norm_dists = distances
+        norm_dists = distances
 
         results = [
             faiss_search_api_pb2.FaissResult(id=int(ids[i]), score=float(norm_dists[i]))
             for i in range(len(ids)) if ids[i] != -1
         ]
 
+        print("returning results from faiss: ")
         return faiss_search_api_pb2.FaissSearchResponse(results=results)
-
-    def encodeQuery(self, request, context):
-        try:
-            print("Received EncodeRequest")
-
-            query = request.query
-            query_embedding = self.model.encode([query])[0].astype(np.float32)
-
-            return faiss_search_api_pb2.EncodedQuery(
-                vector=faiss_search_api_pb2.Vector(values=query_embedding.tolist())
-            )
-        except Exception as e:
-            print("Error encoding query:", e)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return faiss_search_api_pb2.EncodedQuery()
 
 def serve_faiss(index_path, port):
     print("about to serve faiss")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    # Pass the shared model into FaissSearchService
-    faiss_search_api_pb2_grpc.add_FaissSearchServiceServicer_to_server(FaissSearchService(index_path, shared_model), server)
+    faiss_search_api_pb2_grpc.add_FaissSearchServiceServicer_to_server(FaissSearchService(index_path), server)
     server.add_insecure_port(f'[::]:{port}')
     print(f"[FAISS SERVER] Serving index {index_path} on port {port}")
     server.start()

@@ -32,11 +32,14 @@ public class FaissShard implements SearchEngine {
     }
 
     @Override
-    public List<Document.Builder> searchDocs(String query, int k) {
-//        System.out.println("Searching docs in faiss shard " + shardId);
+    public List<Document.Builder> searchDocs(String query, int k, List<Float> encodedQuery) {
+        System.out.println("Searching docs in faiss shard " + shardId);
 
         var start = System.currentTimeMillis();
-        FaissSearchRequest request = FaissSearchRequest.newBuilder().setQuery(query).setK(k).build();
+        FaissSearchRequest request = FaissSearchRequest.newBuilder()
+            .addAllQuery(encodedQuery)
+            .setK(k)
+            .build();
         FaissSearchResponse response = stub.search(request);
         List<Document.Builder> results = new ArrayList<>();
         for (var faissResult : response.getResultsList()) {
@@ -50,23 +53,20 @@ public class FaissShard implements SearchEngine {
     }
 
     @Override
-    public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query) {
+    public List<Document> enrichWithSimilarityScores(List<Document.Builder> docs, String query, List<Float> encodedQuery) {
         var start = System.currentTimeMillis();
 
         if (docs.isEmpty()) {
-//            System.out.println("faiss similarity stage was initiated for empty docs");
 
             return List.of();
         }
-//        System.out.printf("Searching similarity scores in faiss shard %s, docs ids: %s%n", shardId, docs.stream().map(Document.Builder::getId).toList());
-//        System.out.printf("Searching similarity scores in faiss shard %s, for %s docs%n", shardId, docs.size());
+                System.out.printf("Searching similarity scores in faiss shard %s, for %s docs%n", shardId, docs.size());
 
-        var requestBuilder = EncodeRequest.newBuilder().setQuery(query);
-        var queryVector = stub.encodeQuery(requestBuilder.build()).getVector().getValuesList();
+        var queryVector = listToArray(encodedQuery);
         List<CompletableFuture<Document>> futures = docs.stream()
                 .map(docBuilder -> CompletableFuture.supplyAsync(() -> {
                     float[] docVector = passageReader.getVectorById(docBuilder.getId());
-                    float distance = L2DistanceComputer.l2Distance(listToArray(queryVector), docVector);
+                    float distance = L2DistanceComputer.l2Distance(queryVector, docVector);
                     return docBuilder.setFaissScore(distance).build();
                 }, executor))
                 .toList();

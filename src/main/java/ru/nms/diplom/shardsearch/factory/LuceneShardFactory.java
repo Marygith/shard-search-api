@@ -49,9 +49,9 @@ public class LuceneShardFactory {
                     int id = Integer.parseInt(args[1]);
 
                     Document doc = new Document();
-                    doc.add(new IntPoint("id", id));
-                    doc.add(new StoredField("id", id));
-                    doc.add(new TextField("contents", args[0].replaceAll("\"", ""), Field.Store.YES));
+                    doc.add(new IntPoint("id", id)); // For querying/filtering
+                    doc.add(new NumericDocValuesField("id", id)); // Fast ID access during scoring
+                    doc.add(new TextField("contents", args[0].replaceAll("\"", ""), Field.Store.NO)); // Store not needed
                     writer.addDocument(doc);
                 }
             }

@@ -16,9 +16,12 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.FSDirectory;
 import ru.nms.diplom.shardsearch.Document;
 import ru.nms.diplom.shardsearch.service.engine.SearchEngine;
+import ru.nms.diplom.shardsearch.shard.similarity.BM25LSimilarity;
+import ru.nms.diplom.shardsearch.shard.similarity.BM25PlusSimilarity;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -38,9 +41,14 @@ public class LuceneShard implements SearchEngine {
     private final AtomicInteger overallSimilarityScoresCounter = new AtomicInteger(0);
 
     public LuceneShard(Path indexPath, int shardId) throws IOException {
+//        var k = 1.5;
+//        var b = 0.75;
         this.shardId = shardId;
         IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPath));
         this.searcher = new IndexSearcher(reader);
+//        searcher.setSimilarity(new BM25PlusSimilarity(k, b, 1.0f));
+//        searcher.setSimilarity(new BM25LSimilarity(k, b, 1.0f));
+//        searcher.setSimilarity(new BM25Similarity(k, b));
         this.parser = new QueryParser("contents", new StandardAnalyzer());
         this.leaves = reader.leaves();
         this.docBases = leaves.stream().mapToInt(ctx -> ctx.docBase).toArray();
